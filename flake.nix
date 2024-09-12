@@ -11,5 +11,6 @@
       buildInputs = with gst_all_1; [ gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-omx-zynqultrascaleplus ];
     };
     nixosModules.sd-image = import ./sd-image.nix;
+    nixosModules.emmc = import ./emmc.nix;
   };
 }
