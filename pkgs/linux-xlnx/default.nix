@@ -15,8 +15,8 @@ buildLinux (args // {
   src = fetchFromGitHub {
     owner = "Xilinx";
     repo = "linux-xlnx";
-    rev = "xlnx_rebase_v6.12_LTS_2025.1_update1";
-    hash = "sha256-JX3qimEZ9LH0z0InT9DmHJowjjwZ//ygeEIN7iWcMHM=";
+    rev = "bf1529197724f8f20f83f756a76db0c009e7dac0";
+    hash = "sha256-fzbqMQ/V46L4JtaFfU1taiVG1iDtGMypH9d9mEsWnBs=";
   };
 
   structuredExtraConfig = with lib.kernel; {
