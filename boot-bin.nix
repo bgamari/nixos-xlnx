@@ -90,6 +90,17 @@ in
         Path to Zynq MPSoC Platform Management Unit Firmware.
       '';
     };
+    uboot = lib.mkOption {
+      type = lib.types.path;
+      defaultText = lib.literalMD "pkgs.ubootZynqMP or pkgs.ubootZynq";
+      default = if cfg.platform == "zynqmp"
+        then pkgs.ubootZynqMP
+        else pkgs.ubootZynq;
+      example = lib.literalExpression "pkgs.ubootZynqMP";
+      description = lib.mdDoc ''
+        Path to u-boot derivation
+      '';
+    };
 
     boot-bin = lib.mkOption {
       type = lib.types.path;
@@ -104,14 +115,14 @@ in
               [destination_device=pl] ${cfg.bitstream}
               [destination_cpu=a53-0, exception_level=el-3, trustzone] ${pkgs.armTrustedFirmwareZynqMP}/bl31.elf
               [destination_cpu=a53-0, load=0x00100000] ${dtb}
-              [destination_cpu=a53-0, exception_level=el-2] ${pkgs.ubootZynqMP}/u-boot.elf
+              [destination_cpu=a53-0, exception_level=el-2] ${cfg.uboot}/u-boot.elf
             }
           '';
           zynq = ''
             the_ROM_image: {
               [bootloader] ${cfg.fsbl}
               ${cfg.bitstream}
-              ${pkgs.ubootZynq}/u-boot.elf
+              ${cfg.uboot}/u-boot.elf
               [load=0x00100000] ${dtb}
             }
           '';
