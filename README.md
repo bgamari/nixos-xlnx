@@ -10,7 +10,7 @@ Since Vivado v2024.1, FSBL and PMUFW can be built from source using the system-d
 
 ## Build SD card images
 
-After finishing your hardware design in Vivado, choose File > Export > Export Hardware... Save the XSA file. Run [`scripts/gendt.tcl`](./scripts/gendt.tcl) to generate the device-tree and system-device-tree.
+After finishing your hardware design in Vivado, choose `File > Export > Export Hardware...`. Make sure you selected `Include bitstream`. Save the XSA file. Run [`scripts/gendt.tcl`](./scripts/gendt.tcl) to generate the device-tree and system-device-tree:
 
 ```bash
 git clone https://github.com/Xilinx/device-tree-xlnx ~/.cache/device-tree-xlnx -b xilinx_v2024.1 --depth 1
@@ -18,11 +18,11 @@ source /installation/path/to/Vivado/2024.1/settings64.sh
 ./scripts/gendt.tcl vivado_exported.xsa ./output/directory/ -platform zynqmp  # Or "zynq" for Zynq 7000
 ```
 
-Assuming you have [Nix flakes](https://nixos.wiki/wiki/Flakes) enabled, configure NixOS as follows:
+Assuming you have [Nix flakes](https://wiki.nixos.org/wiki/Flakes) enabled, configure NixOS as follows:
 
 ```nix
 {
-  inputs.nixos-xlnx.url = "github:chuangzhu/nixpkgs";
+  inputs.nixos-xlnx.url = "github:chuangzhu/nixos-xlnx";
 
   outputs = { self, nixos-xlnx }: {
     nixosConfigurations.zynqmpboard = nixos-xlnx.inputs.nixpkgs.lib.nixosSystem {
@@ -57,7 +57,7 @@ Assuming you have [Nix flakes](https://nixos.wiki/wiki/Flakes) enabled, configur
 }
 ```
 
-Vivado only knows your PL/PS configuration *inside the SoC*. Therefore, the generated device-tree may not suit your *board* configuration. If you used PetaLinux before, you know that frequently you need to override properties, add/delete nodes in DTSIs in a special directory. In NixOS, we use device-tree overlays for that. Note that overlay DTSs are slightly different with a regular DTS:
+Vivado only knows your PL/PS configuration *inside the SoC*. Therefore, the generated device-tree may not suit your *board* configuration. If you used PetaLinux before, you know that frequently you need to override properties, add/delete nodes with DTSIs in a special directory. In NixOS, we use device-tree overlays for that. Note that overlay DTSs are slightly different with a regular DTS:
 
 ```c
 /dts-v1/;
@@ -122,6 +122,112 @@ Many AArch64 CPUs also supports AArch32, which provides backward compatibility w
   - Check whether your `lscpu` says `CPU op-mode(s): 32-bit, 64-bit`.
   - Add `extra-platforms = armv7l-linux` to your `/etc/nix/nix.conf`. Restart `nix-daemon.service`.
 
+## Notes on Linux kernel
+
+### Adding out-of-tree modules
+
+```nix
+boot.extraModulePackages = [ config.boot.kernelPackages.digilent-hdmi ];
+```
+
+List of out-of-tree Linux modules provided by Nixpkgs:
+
+```shell
+$ nix repl --file '<nixpkgs>'
+nix-repl> linuxPackages.<TAB>
+```
+
+List of out-of-tree Linux modules provided by this repo is under [pkgs/](./pkgs/).
+
+### Adding your own module
+
+<details>
+<summary>
+Example Makefile:
+</summary>
+
+```makefile
+# module-name/Makefile
+
+ifeq ($(KERNELRELEASE),)
+
+KDIR ?= /lib/modules/$(shell uname -r)/build
+
+modules modules_install clean help:
+	$(MAKE) -C $(KDIR) M=$(shell pwd) $@
+
+else
+
+obj-m += module-name.o
+
+module-name-y := source_1.o
+module-name-y += source_2.o
+
+endif
+```
+</details>
+
+<details>
+<summary>
+Example Nix package:
+</summary>
+
+```nix
+# module-name/derivation.nix
+
+{ lib, stdenv, kernel, kmod }:
+
+stdenv.mkDerivation {
+  name = "module-name";
+
+  src = ./.;
+
+  hardeningDisable = [ "pic" ];
+
+  nativeBuildInputs = kernel.moduleBuildDependencies ++ [ kmod ];
+
+  makeFlags = kernel.makeFlags ++ [
+    "KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
+  ];
+  installFlags = [ "INSTALL_MOD_PATH=$(out)" ];
+  installTargets = [ "modules_install" ];
+
+  enableParallelBuilding = true;
+}
+```
+</details>
+
+Add the package to your system's config:
+
+```nix
+boot.extraModulePackages = [
+    (config.boot.kernelPackages.callPackage ./module-name/derivation.nix { })
+];
+```
+
+### Patching the kernel
+
+```nix
+boot.kernelPatches = [
+  { name = "my-patch"; patch = ./my-patch.patch; }
+];
+```
+
+### Modifying kernel config
+
+```nix
+boot.kernelPatches = [
+  {
+    name = "devmem";
+    patch = null;
+    extraStructuredConfig.STRICT_DEVMEM = lib.kernel.no;
+    extraStructuredConfig.IO_STRICT_DEVMEM = lib.kernel.no;
+  }
+];
+```
+
+`lib.kernel.yes`, `lib.kernel.no`, `lib.kernel.module`. Use `lib.mkForce lib.kernel.no` if it conflicts with `nixpkgs/pkgs/os-specific/linux/kernel/common-config.nix`.
+
 ## Known issues
 
 ### Applications that requires OpenGL not launching
@@ -178,6 +284,10 @@ systemd.services.i3 = {
 };
 ```
 </details>
+
+## Contributing
+
+Contributions are welcome! Just keep your pull requests focused on one feature at a time instead of contributing lots of changes at once. This makes reviews much easier. Thanks!
 
 ## Disclaimer
 
