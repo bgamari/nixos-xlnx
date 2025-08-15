@@ -6,13 +6,13 @@
 }:
 
 buildUBoot {
-  version = "2024.01-xilinx-v2024.1";
+  version = "2025.01-xilinx-v2025.1";
 
   src = fetchFromGitHub {
     owner = "Xilinx";
     repo = "u-boot-xlnx";
-    rev = "xlnx_rebase_v2024.01_2024.1";
-    hash = "sha256-G6GOcazwY4A/muG2hh4pj8i9jm536kYhirrOzcn77WE=";
+    rev = "xlnx_rebase_v2025.01_2025.1_update1";
+    hash = "sha256-maFS/4seulVVKTDn15tnx6VEOBtrAxia6woFHYeeOmI=";
   };
 
   defconfig = "xilinx_${platform}_virt_defconfig";
