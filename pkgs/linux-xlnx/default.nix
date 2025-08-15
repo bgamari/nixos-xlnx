@@ -4,19 +4,19 @@
 , stdenv
 , defconfig ? "xilinx_defconfig"
 , kernelPatches ? [ ]
-, version ? "6.6.10-xilinx-v2024.1"
+, version ? "6.12.10-xilinx-v2025.1"
 , ...
 } @ args:
 
 buildLinux (args // {
   inherit version;
-  modDirVersion = if defconfig == "xilinx_zynq_defconfig" then "6.6.10-xilinx" else "6.6.10";
+  modDirVersion = if defconfig == "xilinx_zynq_defconfig" then "6.12.10-xilinx" else "6.12.10";
 
   src = fetchFromGitHub {
     owner = "Xilinx";
     repo = "linux-xlnx";
-    rev = "xlnx_rebase_v6.6_LTS_2024.1";
-    hash = "sha256-tfpNLRtC9OQZfWaLkaGM42bqhLICDPeT5AoE271p3a0=";
+    rev = "xlnx_rebase_v6.12_LTS_2025.1_update1";
+    hash = "sha256-JX3qimEZ9LH0z0InT9DmHJowjjwZ//ygeEIN7iWcMHM=";
   };
 
   structuredExtraConfig = with lib.kernel; {
@@ -43,20 +43,7 @@ buildLinux (args // {
     DRM_XLNX_MIXER = no;
   };
 
-  kernelPatches = [
-    # ERROR: modpost: module tps544 uses symbol pmbus_do_probe from namespace PMBUS, but does not import it.
-    { name = "fix-tps544-nsdeps"; patch = ./fix-tps544-nsdeps.patch; }
-  ] ++ lib.optionals (lib.versionAtLeast version "6.1.0-xilinx-v2023.2") [
-    # ERROR: modpost: "xlnx_hdcp_tx_set_keys" [drivers/gpu/drm/xlnx/xlnx_hdmi.ko] undefined!
-    # ERROR: modpost: module xlnx_mpg2tsmux uses symbol dma_buf_unmap_attachment from namespace DMA_BUF, but does not import it.
-    { name = "fix-hdcp-modpost"; patch = ./fix-hdcp-modpost.patch; }
-  ] ++ lib.optionals (lib.versionOlder version "6.1.0-xilinx-v2023.2") [
-    # error: implicit declaration of function 'FIELD_PREP'
-    { name = "xilinx-hdcp1x-cipher"; patch = ./xilinx-hdcp1x-cipher.patch; }
-  # ] ++ lib.optionals stdenv.is32bit [
-  #   # ERROR: modpost: "__aeabi_ldivmod" [drivers/clk/clk-xlnx-clock-wizard.ko] undefined!
-  #   { name = "fix-various-xilinx-modules-div64"; patch = ./fix-various-xilinx-modules-div64.patch; }
-  ] ++ kernelPatches;
+  inherit kernelPatches;
 
   extraMeta.platforms = [ "aarch64-linux" "armv7l-linux" ];
 } // (args.argsOverride or { }))
